@@ -1,0 +1,48 @@
+--- a/files-ucode/usr/share/ucode/wifi/hostapd.uc
++++ b/files-ucode/usr/share/ucode/wifi/hostapd.uc
+@@ -555,8 +555,8 @@ function setup_interface(interface, data
+ 	ap.generate(interface, data, config, vlans, stas, phy_features);
+ }
+ 
+-export function setup(data) {
+-	let file_name = `/var/run/hostapd-${data.phy}${data.vif_phy_suffix}.conf`;
++export function generate_config(data, file_name) {
++	file_name ??= `/var/run/hostapd-${data.phy}${data.vif_phy_suffix}.conf`;
+ 
+ 	flush_config();
+ 
+@@ -564,6 +564,7 @@ export function setup(data) {
+ 		fs.rename(file_name, file_name + '.prev');
+ 
+ 	data.config.phy = data.phy;
++	iface_idx = 0;
+ 
+ 	generate(data.config);
+ 
+@@ -588,13 +589,23 @@ export function setup(data) {
+ 		has_ap = true;
+ 	}
+ 
+-	let config = dump_config(file_name);
++	dump_config(file_name);
++
++	return {
++		config: has_ap ? file_name : "",
++		prev_config: file_name + '.prev',
++		has_ap
++	};
++};
++
++export function setup(data) {
++	let conf = generate_config(data);
+ 
+ 	let msg = {
+ 		phy: data.phy,
+ 		radio: data.config.radio,
+-		config: has_ap ? file_name : "",
+-		prev_config: file_name + '.prev'
++		config: conf.config,
++		prev_config: conf.prev_config
+ 	};
+ 	if (!global.ubus.list('hostapd'))
+ 		system('ubus wait_for hostapd');
