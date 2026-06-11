@@ -1,0 +1,34 @@
+--- a/files-ucode/usr/share/ucode/wifi/iface.uc
++++ b/files-ucode/usr/share/ucode/wifi/iface.uc
+@@ -122,14 +122,15 @@ export function parse_encryption(config,
+ 		config.wpa_pairwise ??= 'CCMP';
+ };
+ 
+-export function wpa_key_mgmt(config, band) {
++export function wpa_key_mgmt(config, band, use_psk_sha256_only) {
+ 	if (!config.wpa)
+ 		return;
+ 
+ 	switch(config.auth_type) {
+ 	case 'psk':
+ 	case 'psk2':
+-		append_value(config, 'wpa_key_mgmt', 'WPA-PSK');
++		if (!use_psk_sha256_only)
++			append_value(config, 'wpa_key_mgmt', 'WPA-PSK');
+ 		if (config.wpa >= 2 && config.ieee80211r)
+ 			append_value(config, 'wpa_key_mgmt', 'FT-PSK');
+ 		if (config.ieee80211w)
+--- a/files-ucode/usr/share/ucode/wifi/ap.uc
++++ b/files-ucode/usr/share/ucode/wifi/ap.uc
+@@ -583,7 +583,10 @@ export function generate(interface, data
+ 
+ 	iface_interworking(config);
+ 
+-	iface.wpa_key_mgmt(config, data.config.band);
++	// MTK AP interoperability requires SHA256-only for required-PMF WPA2-PSK.
++	let use_psk_sha256_only = config.auth_type == 'psk' &&
++		config.wpa == 2 && config.ieee80211w == 2;
++	iface.wpa_key_mgmt(config, data.config.band, use_psk_sha256_only);
+ 	append_vars(config, [
+ 		'wpa_key_mgmt',
+ 	]);
