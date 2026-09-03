@@ -307,13 +307,27 @@ include $(INCLUDE_DIR)/package.mk
 
 TAR_CMD=$(HOST_TAR) -C $(1)/ $(TAR_OPTIONS)
 
+MT_WIFI_DEPENDS:=+wifi-dats +kmod-conninfra +kmod-mediatek_hnat
+MT_WIFI_FILES:=$(PKG_BUILD_DIR)/mt_wifi_ap/mt_wifi.ko
+MT_WIFI_AUTOLOAD:=$(call AutoProbe,mt_wifi)
+
+ifneq ($(CONFIG_MTK_WHNAT_SUPPORT),)
+  MT_WIFI_DEPENDS += +kmod-warp
+  ifeq ($(CONFIG_MTK_WARP_V2),y)
+    MT_WIFI_FILES += $(PKG_BUILD_DIR)/mt_wifi/embedded/plug_in/warp_proxy/mtk_warp_proxy.ko
+    MT_WIFI_AUTOLOAD += mtk_warp_proxy
+  else
+    MT_WIFI_FILES += $(PKG_BUILD_DIR)/mt_wifi/embedded/plug_in/whnat/mt_whnat.ko
+    MT_WIFI_AUTOLOAD += mt_whnat
+  endif
+endif
+
 define KernelPackage/mt_wifi
   CATEGORY:=MTK Properties
   TITLE:=MTK wifi AP driver
-  DEPENDS:=+wifi-dats +kmod-conninfra +kmod-mediatek_hnat +kmod-warp
-  FILES:=$(PKG_BUILD_DIR)/mt_wifi_ap/mt_wifi.ko \
-	$(PKG_BUILD_DIR)/mt_wifi/embedded/plug_in/warp_proxy/mtk_warp_proxy.ko
-  AUTOLOAD:=$(call AutoProbe,mt_wifi mtk_warp_proxy)
+  DEPENDS:=$(MT_WIFI_DEPENDS)
+  FILES:=$(MT_WIFI_FILES)
+  AUTOLOAD:=$(MT_WIFI_AUTOLOAD)
   SUBMENU:=Drivers
   MENU:=1
 endef

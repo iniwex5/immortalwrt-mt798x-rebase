@@ -36,8 +36,9 @@ cursor.load("wireless");
 
 let l1 = l1parser.open();
 
-// unordered object
-let all_devs = l1.getall();
+// Keep driver-facing L1 names intact while using an optional board-specific
+// userspace VIF mapping for generated UCI configuration.
+let all_devs = driver.runtime_devices(l1.getall());
 // get devnames listed by order
 let all_devnames = l1.list();
 

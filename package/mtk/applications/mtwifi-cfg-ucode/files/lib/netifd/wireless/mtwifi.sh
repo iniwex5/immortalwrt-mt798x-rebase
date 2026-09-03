@@ -27,6 +27,7 @@ import * as l1parser from 'l1parser';
 import { schemas } from 'mtwifi.defaults';
 import * as netifd from 'mtwifi.netifd';
 import * as cfg from 'mtwifi.config';
+import * as driver from 'mtwifi.driver';
 import { log, with_lock } from 'mtwifi.utils';
 
 const LOCK_FILE = "/var/lock/mtwifi.lock";
@@ -101,7 +102,7 @@ function handle_setup(data) {
     let l1 = l1parser.open();
     
     // get all devices from L1 Profile
-    let all_devs = l1.getall();
+    let all_devs = driver.runtime_devices(l1.getall());
     let cur_dev = all_devs[cur_devname];
 
     if (!cur_dev) {
@@ -259,7 +260,7 @@ function handle_setup(data) {
 // ==========================================
 function handle_teardown() {
     let l1 = l1parser.open();
-    let all_devs = l1.getall();
+    let all_devs = driver.runtime_devices(l1.getall());
     // we dont have to unset vifs in netifd
     // since it is triggered by netifd, vif destroy issues may handled by netifd
     // TODO: teardown logic may still buggy when main device in DBDC were shutdown

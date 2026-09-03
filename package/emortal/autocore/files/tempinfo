@@ -9,6 +9,7 @@ get_mtwifi_temp() {
 	local flag
 	local ifname
 	local temp
+	local raw
 	local mtwifi_vifs="ra0 rax0 rai0 ray0 rae0 raz0"
 	local result=""
 
@@ -16,7 +17,19 @@ get_mtwifi_temp() {
 		if [ -f "/sys/class/net/${ifname}/flags" ]; then
 			flag="$(cat /sys/class/net/${ifname}/flags)"
 			if [ "$((flag & 0x1))" -eq "1" ]; then
-				temp="$(iwpriv ${ifname} stat | awk '/CurrentTemperature/ {printf("%d°C", $3)}')"
+				temp="$(iwpriv ${ifname} stat 2>/dev/null | awk '/CurrentTemperature/ {printf("%d°C", $3)}')"
+				if [ -z "$temp" ] && [ -f /usr/lib/lua/ioctl_helper.so ] && command -v lua >/dev/null; then
+					raw="$(MTK_WIFI_IF="$ifname" lua -e '
+						require "ioctl_helper"
+						local t = c_getTempature(os.getenv("MTK_WIFI_IF"))
+						if t and t.tempature then print(t.tempature) end
+					' 2>/dev/null)"
+					case "$raw" in
+						''|0) ;;
+						*) temp="${raw}°C" ;;
+					esac
+				fi
+				[ -z "$temp" ] && continue
 				[ -z "$result" ] && result="${temp}" || result="${result}/${temp}"
 			fi
 		fi

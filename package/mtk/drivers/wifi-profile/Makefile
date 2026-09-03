@@ -27,6 +27,13 @@ PKG_CONFIG_DEPENDS:=$(foreach c, $(PKG_KCONFIG),$(if $(CONFIG_$c),CONFIG_$(c)))
 
 include $(INCLUDE_DIR)/package.mk
 
+# The P3 profile keeps the driver-facing ra0/rax0 order and carries a separate
+# runtime mapping for userspace. Keep it board-specific so other MT7981
+# devices retain the generic interface assignment.
+ifneq ($(filter DEVICE_fzs_5gcpe-p3 DEVICE_fzs_5gcpe-p3-512m,$(call qstrip,$(CONFIG_TARGET_PROFILE))),)
+  WIFI_PROFILE_VARIANT := fzs-5gcpe-p3
+endif
+
 define Package/wifi-profile
   SECTION:=MTK Properties
   CATEGORY:=MTK Properties
@@ -140,6 +147,10 @@ define Package/wifi-dats/install
 
 	if [ "$$(CONFIG_first_card_name)" = "MT7981" -o "$$(CONFIG_second_card_name)" = "MT7981" ] ; then \
 		$(INSTALL_DATA) ./files/mt7981/* $(1)/etc/wireless/mediatek/; \
+	fi
+
+	if [ -n "$(WIFI_PROFILE_VARIANT)" ]; then \
+		$(INSTALL_DATA) ./files/$(WIFI_PROFILE_VARIANT)/l1profile.dat $(1)/etc/wireless/mediatek/l1profile.dat; \
 	fi
 
 	if [ -f "$(1)/etc/wireless/mediatek/l1profile.dat" ]; then \

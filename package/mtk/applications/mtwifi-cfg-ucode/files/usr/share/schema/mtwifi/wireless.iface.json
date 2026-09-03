@@ -92,6 +92,10 @@
             "type": "boolean",
             "description": "Enable 802.11k support"
         },
+        "bss_transition": {
+            "type": "boolean",
+            "description": "Enable 802.11v BSS Transition Management"
+        },
         "mumimo_dl": {
             "type": "boolean",
             "description": "Enable MU-MIMO DL"

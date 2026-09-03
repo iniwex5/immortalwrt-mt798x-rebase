@@ -21,6 +21,31 @@ import { log } from 'mtwifi.utils';
 import { defs } from 'mtwifi.defaults';
 import * as fs from 'fs';
 
+// Some board-specific L1 profiles need a different userspace VIF mapping
+// while retaining the driver-facing names used to initialize the chipset.
+// runtime_* values are optional, so ordinary profiles retain their behavior.
+export function runtime_device(dev) {
+	if (!dev) return null;
+
+	let runtime = {};
+	for (let key, value in dev) runtime[key] = value;
+
+	runtime.init_main_ifname = dev.main_ifname;
+
+	for (let key in ["main_ifname", "ext_ifname", "wds_ifname", "apcli_ifname", "mesh_ifname"]) {
+		let runtime_key = `runtime_${key}`;
+		if (dev[runtime_key]) runtime[key] = dev[runtime_key];
+	}
+
+	return runtime;
+};
+
+export function runtime_devices(devices) {
+	let runtime = {};
+	for (let devname, dev in devices) runtime[devname] = runtime_device(dev);
+	return runtime;
+};
+
 // ==========================================
 // iface Operations
 // ==========================================

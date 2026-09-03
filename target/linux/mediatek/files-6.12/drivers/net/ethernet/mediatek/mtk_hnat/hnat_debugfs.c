@@ -1246,18 +1246,27 @@ static int hnat_nf_acct_update(struct mtk_hnat *h, u32 ppe_id,
 	return 0;
 }
 
+static int hnat_debugfs_entry_ready(struct mtk_hnat *h, u32 ppe_id)
+{
+	if (!h || h != hnat_priv || ppe_id >= CFG_PPE_NUM ||
+	    !h->foe_etry_num || !h->foe_table_cpu[ppe_id])
+		return -ENODEV;
+
+	return 0;
+}
+
 struct hnat_accounting *hnat_get_count(struct mtk_hnat *h, u32 ppe_id,
 				       u32 index, struct hnat_accounting *diff)
 {
 	u64 bytes, packets;
 
-	if (ppe_id >= CFG_PPE_NUM)
+	if (hnat_debugfs_entry_ready(h, ppe_id))
 		return NULL;
 
-	if (index >= hnat_priv->foe_etry_num)
+	if (index >= h->foe_etry_num)
 		return NULL;
 
-	if (!hnat_priv->data->per_flow_accounting)
+	if (!h->data || !h->data->per_flow_accounting)
 		return NULL;
 
 	if (read_mib(h, ppe_id, index, &bytes, &packets))
@@ -1294,6 +1303,9 @@ static int __hnat_debug_show(struct seq_file *m, void *private, u32 ppe_id)
 
 	if (ppe_id >= CFG_PPE_NUM)
 		return -EINVAL;
+
+	if (hnat_debugfs_entry_ready(h, ppe_id))
+		return -ENODEV;
 
 	entry = h->foe_table_cpu[ppe_id];
 	end = h->foe_table_cpu[ppe_id] + hnat_priv->foe_etry_num;
@@ -2126,8 +2138,8 @@ static int __hnat_entry_read(struct seq_file *m, void *private, u32 ppe_id)
 	int hash_index;
 	int cnt;
 
-	if (ppe_id >= CFG_PPE_NUM)
-		return -EINVAL;
+	if (hnat_debugfs_entry_ready(h, ppe_id))
+		return -ENODEV;
 
 	hash_index = 0;
 	cnt = 0;
@@ -2418,13 +2430,22 @@ static void print_hw_mcast(struct ppe_mcast_group *group)
 
 static int mcast_table_dump(struct seq_file *m, void *private)
 {
+	struct ppe_mcast_table *pmcast;
 	struct ppe_mcast_group *group;
 
 	pr_info("==== PPE Multicast Group List ====\n");
-	list_for_each_entry(group, &hnat_priv->pmcast->groups, list) {
+	if (!hnat_priv || !hnat_priv->pmcast) {
+		pr_info("HNAT multicast table is unavailable\n");
+		return -ENODEV;
+	}
+
+	pmcast = hnat_priv->pmcast;
+	read_lock_bh(&pmcast->mcast_lock);
+	list_for_each_entry(group, &pmcast->groups, list) {
 		if (group->ppe_id != -1)
 			print_hw_mcast(group);
 	}
+	read_unlock_bh(&pmcast->mcast_lock);
 	pr_info("==================================\n");
 
 	return 0;
@@ -4077,11 +4098,11 @@ int hnat_init_debugfs(struct mtk_hnat *h)
 			    &cpu_reason_fops);
 	debugfs_create_file("hnat_entry", 0444, root, h,
 			    &hnat_entry_fops);
-	debugfs_create_file("hnat_setting", 0444, root, h,
+	debugfs_create_file("hnat_setting", 0644, root, h,
 			    &hnat_setting_fops);
 	debugfs_create_file("mcast_table", 0444, root, h,
 			    &hnat_mcast_fops);
-	debugfs_create_file("hook_toggle", 0444, root, h,
+	debugfs_create_file("hook_toggle", 0644, root, h,
 			    &hnat_hook_toggle_fops);
 	debugfs_create_file("mcast_hook_toggle", 0444, root, h,
 			    &hnat_mcast_hook_toggle_fops);

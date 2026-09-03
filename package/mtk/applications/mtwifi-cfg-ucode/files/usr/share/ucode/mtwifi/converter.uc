@@ -317,8 +317,9 @@ export function convert(uci_cfg) {
 		set_token("DtimPeriod", c.dtim_period);
 		set_token("RekeyInterval", c.wpa_group_rekey);
 
-		// 802.11k/v/w
+		// 802.11k/v
 		set_token("RRMEnable", strict_bool(c.ieee80211k));
+		set_token("WNMEnable", strict_bool(c.bss_transition));
 		
 		// HT settings
 		set_token("HT_AMSDU", strict_bool(c.amsdu));

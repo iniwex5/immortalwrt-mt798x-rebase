@@ -11,6 +11,26 @@ service_triggers() {
 	procd_add_reload_trigger "turboacc"
 }
 
+load_hnat() {
+	local i=0
+
+	if ! grep -q '^mtkhnat[[:space:]]' /proc/modules 2>/dev/null; then
+		if ! modprobe mtkhnat 2>/dev/null; then
+			logger -t turboacc "failed to load mtkhnat"
+			return 1
+		fi
+	fi
+
+	while [ "$i" -lt 20 ]; do
+		[ -d "/sys/kernel/debug/hnat" ] && return 0
+		i=$((i + 1))
+		sleep 1
+	done
+
+	logger -t turboacc "mtkhnat loaded but /sys/kernel/debug/hnat is unavailable"
+	return 1
+}
+
 start_service() {
 	config_load "turboacc"
 
@@ -50,17 +70,26 @@ start_service() {
 		;;
 	"mediatek_hnat")
 		local hnat_path="/sys/kernel/debug/hnat"
-		# only set hnat settings when directory exists
-		if [ -d "$hnat_path" ]; then
-			echo "1" > "$hnat_path/hook_toggle"
+		local hnat_state
+		local fastpath_mh_bind_rate fastpath_mh_update_nfct
 
-			local fastpath_mh_bind_rate fastpath_mh_update_nfct
-			# hnat bind rate
+		if load_hnat; then
+			if ! printf '1\n' > "$hnat_path/hook_toggle"; then
+				logger -t turboacc "failed to enable HNAT hooks"
+			elif [ "$(cat "$hnat_path/hook_toggle" 2>/dev/null)" != "enabled" ]; then
+				hnat_state="$(cat "$hnat_path/hook_toggle" 2>/dev/null)"
+				logger -t turboacc "HNAT hook did not enable (state: ${hnat_state:-unreadable})"
+			fi
+
 			config_get "fastpath_mh_bind_rate" "config" "fastpath_mh_bind_rate" "30"
-			echo "1 $fastpath_mh_bind_rate" > "$hnat_path/hnat_setting"
-			# update hnat counter to nf_conntrack or not
+			if ! printf '1 %s\n' "$fastpath_mh_bind_rate" > "$hnat_path/hnat_setting"; then
+				logger -t turboacc "failed to set HNAT bind rate"
+			fi
+
 			config_get "fastpath_mh_update_nfct" "config" "fastpath_mh_update_nfct" "0"
-			echo "7 $fastpath_mh_update_nfct" > "$hnat_path/hnat_setting"
+			if ! printf '7 %s\n' "$fastpath_mh_update_nfct" > "$hnat_path/hnat_setting"; then
+				logger -t turboacc "failed to set HNAT counter update"
+			fi
 		fi
 		;;
 	esac

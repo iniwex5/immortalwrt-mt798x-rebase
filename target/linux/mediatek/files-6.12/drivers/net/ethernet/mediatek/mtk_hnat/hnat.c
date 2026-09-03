@@ -78,8 +78,11 @@ static void hnat_sma_build_entry(struct timer_list *t)
 
 struct foe_entry *hnat_get_foe_entry(u32 ppe_id, u32 index)
 {
-	if (index == 0x7fff || index >= hnat_priv->foe_etry_num ||
-	    ppe_id >= CFG_PPE_NUM)
+	if (!hnat_priv || ppe_id >= CFG_PPE_NUM ||
+	    !hnat_priv->foe_table_cpu[ppe_id])
+		return ERR_PTR(-ENODEV);
+
+	if (index == 0x7fff || index >= hnat_priv->foe_etry_num)
 		return ERR_PTR(-EINVAL);
 
 	return &hnat_priv->foe_table_cpu[ppe_id][index];
@@ -883,9 +886,10 @@ int hnat_dump_cache_entry(u32 ppe_id, int hash)
 	int line;
 	int i;
 
-	if (ppe_id >= CFG_PPE_NUM) {
+	if (!hnat_priv || ppe_id >= CFG_PPE_NUM ||
+	    !hnat_priv->ppe_base[ppe_id]) {
 		pr_warn("%s: invalid ppe_id %d\n", __func__, ppe_id);
-		return -EINVAL;
+		return -ENODEV;
 	}
 
 	/* disable scan mode */
@@ -918,12 +922,17 @@ int hnat_dump_ppe_entry(u32 ppe_id, u32 hash)
 	struct foe_entry *entry;
 	int i;
 
-	if (ppe_id >= CFG_PPE_NUM || hash >= hnat_priv->foe_etry_num) {
+	if (!hnat_priv || ppe_id >= CFG_PPE_NUM ||
+	    !hnat_priv->foe_table_cpu[ppe_id] ||
+	    hash >= hnat_priv->foe_etry_num) {
 		pr_warn("%s: invalid ppe_id or hash %d_%d\n", __func__, ppe_id, hash);
-		return -1;
+		return -ENODEV;
 	}
 
 	entry = hnat_get_foe_entry(ppe_id, hash);
+	if (IS_ERR(entry))
+		return PTR_ERR(entry);
+
 	pr_info("====================PPE Entry %d_%d HEX DUMP========================\n",
 		ppe_id, hash);
 	for (i = 0; i < sizeof(*entry) / 4; i += 8) {
@@ -943,6 +952,10 @@ static irqreturn_t hnat_handle_fe_irq2(int irq, void *priv)
 	struct ppe_flow_chk_status *fcs;
 	u32 irq_status, chk_status;
 	u32 ppe_id;
+	struct foe_entry *entry;
+
+	if (!hnat_priv || !hnat_priv->fe_base)
+		return IRQ_NONE;
 
 	irq_status = readl(hnat_priv->fe_base + MTK_FE_INT_STATUS2);
 	if (irq_status & MTK_FE_INT2_PPE0_FLOW_CHK) {
@@ -956,8 +969,18 @@ static irqreturn_t hnat_handle_fe_irq2(int irq, void *priv)
 		return IRQ_NONE;
 	}
 
+	if (!hnat_priv->ppe_base[ppe_id])
+		return IRQ_HANDLED;
+
 	chk_status = readl(hnat_priv->ppe_base[ppe_id] - 0x200 + PPE_FLOW_CHK_STATUS);
 	fcs = (struct ppe_flow_chk_status *)(&chk_status);
+	entry = hnat_get_foe_entry(ppe_id, fcs->entry);
+	if (IS_ERR_OR_NULL(entry)) {
+		pr_warn_ratelimited("%s: ignoring invalid flow-check entry %u_%u\n",
+				    __func__, ppe_id, fcs->entry);
+		return IRQ_HANDLED;
+	}
+
 	pr_info("PPE%d_FLOW_CHK_IRQ HIT! status=0x%08x\n", ppe_id, chk_status);
 	pr_info("ENTRY=%d|STC=%d|STATE=%d|SP=%d|FP=%d|CAH=%d|RMT=%d|PSN=%d|DRAM=%d|VALID=%d\n",
 		fcs->entry, fcs->sta, fcs->state, fcs->sp, fcs->fp, fcs->cah, fcs->rmt,

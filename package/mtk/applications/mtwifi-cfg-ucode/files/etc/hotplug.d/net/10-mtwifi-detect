@@ -1,9 +1,14 @@
 #!/bin/sh
 
-[ "${ACTION}" = "add" ] && [ "${INTERFACE%%[0-9]}" = "ra" ] &&  {
-	if [ ! -f /etc/config/wireless ]; then
-		need_up=1
-	fi
-	/sbin/wifi config
-	[ "$need_up" = "1" ] && /sbin/wifi up
-}
+[ "${ACTION}" = "add" ] || exit 0
+
+# MTK profiles may expose a main interface with the x-suffixed name.
+case "${INTERFACE%%[0-9]}" in
+	ra|rax)
+		if ! uci -q show wireless | grep -q '=wifi-device'; then
+			need_up=1
+		fi
+		/sbin/wifi config
+		[ "$need_up" = "1" ] && /sbin/wifi up
+		;;
+esac

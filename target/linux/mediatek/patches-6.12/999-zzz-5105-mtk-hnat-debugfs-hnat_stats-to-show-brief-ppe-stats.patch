@@ -10,8 +10,8 @@
 +	struct foe_entry *entry, *end;
 +	int cnt;
 +
-+	if (ppe_id >= CFG_PPE_NUM)
-+		return -EINVAL;
++	if (hnat_debugfs_entry_ready(h, ppe_id))
++		return -ENODEV;
 +
 +	cnt = 0;
 +	entry = h->foe_table_cpu[ppe_id];
@@ -63,11 +63,11 @@
  {
  	struct mtk_hnat *h = hnat_priv;
 @@ -4085,6 +4140,8 @@ int hnat_init_debugfs(struct mtk_hnat *h
- 			    &cpu_reason_fops);
- 	debugfs_create_file("hnat_entry", 0444, root, h,
- 			    &hnat_entry_fops);
+			    &cpu_reason_fops);
+	debugfs_create_file("hnat_entry", 0444, root, h,
+			    &hnat_entry_fops);
 +	debugfs_create_file("hnat_stats", 0444, root, h,
 +			    &hnat_stats_fops);
- 	debugfs_create_file("hnat_setting", 0444, root, h,
- 			    &hnat_setting_fops);
+	debugfs_create_file("hnat_setting", 0644, root, h,
+			    &hnat_setting_fops);
  	debugfs_create_file("mcast_table", 0444, root, h,

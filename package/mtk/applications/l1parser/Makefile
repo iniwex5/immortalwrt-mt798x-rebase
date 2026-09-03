@@ -55,7 +55,8 @@ endef
 define Package/l1util/install
 	$(INSTALL_DIR) $(1)/sbin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/l1util $(1)/sbin/
-	$(LN) l1util $(1)/sbin/l1dat
+	# luci-app-mtk owns its legacy l1dat helper; avoid a package-file conflict.
+	$(if $(filter y,$(CONFIG_PACKAGE_luci-app-mtk)),,$(LN) l1util $(1)/sbin/l1dat)
 endef
 
 define Package/ucode-mod-l1parser/install

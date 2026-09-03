@@ -1690,6 +1690,43 @@ define Device/edgecore_eap111
 endef
 TARGET_DEVICES += edgecore_eap111
 
+define Device/fzs_5gcpe-p3
+  DEVICE_VENDOR := FZS
+  DEVICE_MODEL := 5GCPE P3
+  DEVICE_DTS := mt7981b-fzs-5gcpe-p3
+  DEVICE_DTS_DIR := ../dts
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  IMAGE_SIZE := 112m
+  KERNEL_IN_UBI := 1
+  DEVICE_PACKAGES := kmod-mt_wifi mtwifi-cfg-ucode \
+	kmod-usb3 kmod-usb-acm kmod-usb-serial-option \
+	kmod-usb-serial-qualcomm kmod-usb-net-qmi-wwan \
+	kmod-usb-net-cdc-mbim kmod-usb-net-cdc-ether kmod-usb-net-rndis \
+	uqmi umbim luci-proto-qmi luci-proto-mbim
+  IMAGES += factory.bin
+  IMAGE/factory.bin := append-ubi | check-size $$$$(IMAGE_SIZE)
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+endef
+TARGET_DEVICES += fzs_5gcpe-p3
+
+define Device/fzs_5gcpe-p3-512m
+  $(Device/fzs_5gcpe-p3)
+  DEVICE_MODEL := 5GCPE P3 512M
+  DEVICE_VARIANT := 512MiB NAND
+  DEVICE_DTS := mt7981b-fzs-5gcpe-p3-512m
+  IMAGE_SIZE := 474m
+  # These optional services are kept in the 512M rootfs only when using
+  # TARGET_PER_DEVICE_ROOTFS; the compact 128M profile omits them.
+  DEVICE_PACKAGES += \
+	luci-app-homeproxy luci-i18n-homeproxy-zh-cn sing-box \
+	adguardhome luci-app-adguardhome \
+	luci-app-nlbwmon luci-i18n-nlbwmon-zh-cn nlbwmon \
+	luci-app-wrtbwmon-zh wrtbwmon luci-lib-chartjs
+endef
+TARGET_DEVICES += fzs_5gcpe-p3-512m
+
 define Device/elecom_wrc-x3000gs3
   DEVICE_VENDOR := ELECOM
   DEVICE_MODEL := WRC-X3000GS3

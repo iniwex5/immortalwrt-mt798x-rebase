@@ -82,6 +82,9 @@ mediatek_setup_interfaces()
 	viettel,nr3053)
 		ucidef_set_interfaces_lan_wan "lan1 lan2 lan3" wan
 		;;
+	fzs,5gcpe-p3)
+		ucidef_set_interfaces_lan_wan "lan1" wan
+		;;
 	asus,tuf-ax4200|\
 	iptime,ax3000sm|\
 	iptime,ax7800m-6e|\

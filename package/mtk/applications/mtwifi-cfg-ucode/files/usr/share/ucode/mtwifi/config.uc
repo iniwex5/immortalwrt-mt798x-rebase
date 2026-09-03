@@ -192,7 +192,9 @@ export function setup(uci_cfg, all_devs) {
 	if (is_dbdc) {
 		// concat main dev name: ChipName_ChipIndex_1
 		let main_devname = `${cur_dev.INDEX}_${cur_dev.mainidx}_1`;
-		main_vif = all_devs[main_devname].main_ifname;
+		// The driver bootstrap still uses its L1-facing main interface. Runtime
+		// VIF mapping is used only after the chipset has been initialized.
+		main_vif = all_devs[main_devname].init_main_ifname || all_devs[main_devname].main_ifname;
 	} else {
 		main_vif = cur_dev.main_ifname;
 	}

@@ -46,7 +46,9 @@ function debug_write(...)
 end
 
 function index()
-    entry({"admin", "network", "wifi"}, template("admin_mtk/mtk_wifi_overview"), _("Wireless"), 10)
+    -- Keep the legacy MTK endpoints available for advanced diagnostics, but
+    -- make the old top-level page resolve to the standard LuCI wireless view.
+    entry({"admin", "network", "wifi"}, call("redirect_to_wireless"))
     entry({"admin", "network", "wifi", "test"}, call("test")).leaf = true
     entry({"admin", "network", "wifi", "chip_cfg_view"}, template("admin_mtk/mtk_wifi_chip_cfg")).leaf = true
     entry({"admin", "network", "wifi", "chip_cfg"}, call("chip_cfg")).leaf = true
@@ -82,6 +84,10 @@ function index()
     entry({"admin", "network", "wifi", "loading"}, template("admin_mtk/mtk_wifi_loading")).leaf = true;
     entry({"admin", "network", "wifi", "get_apply_status"}, call("get_apply_status")).leaf = true;
     entry({"admin", "network", "wifi", "reset_to_defaults"}, call("reset_to_defaults")).leaf = true;
+end
+
+function redirect_to_wireless()
+    http.redirect(luci.dispatcher.build_url("admin", "network", "wireless"))
 end
 
 function test()
@@ -1418,4 +1424,3 @@ function reset_to_defaults(devname)
     mtkwifi.__run_in_child_env(exec_reset_to_defaults_cmd, devname)
     luci.http.redirect(luci.dispatcher.build_url("admin", "network", "wifi", "loading",mtkwifi.get_referer_url()))
 end
-

@@ -42,6 +42,7 @@ define Package/fit-check-sign
 	SECTION:=utils
 	CATEGORY:=Utilities
 	SUBMENU:=Boot Loaders
+	DEPENDS:=+libopenssl
 	TITLE:=verify uImage.FIT
 endef
 
